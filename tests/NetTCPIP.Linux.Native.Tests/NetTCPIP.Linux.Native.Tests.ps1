@@ -238,3 +238,128 @@ Describe 'Get-NetIPConfiguration integration' -Skip:(-not $script:isLinux) {
         $result | Should -Not -BeNullOrEmpty
     }
 }
+
+# ---------------------------------------------------------------------------
+# Loopback alias add/remove round-trip — Linux + root only
+# ---------------------------------------------------------------------------
+Describe 'New-NetIPAddress / Remove-NetIPAddress loopback alias' -Skip:(-not $script:isRoot) {
+    BeforeAll {
+        $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Release\net8.0\NetTCPIP.Linux.Native.dll'
+        if (-not (Test-Path $dllPath)) {
+            $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Debug\net8.0\NetTCPIP.Linux.Native.dll'
+        }
+        Import-Module $dllPath -Force
+
+        # Clean up in case a previous run left this alias
+        Remove-NetIPAddress -IPAddress '127.0.1.99' -PrefixLength 32 -InterfaceAlias 'lo' `
+            -Confirm:$false -ErrorAction SilentlyContinue
+    }
+
+    AfterAll {
+        # Always clean up so other tests are not affected
+        Remove-NetIPAddress -IPAddress '127.0.1.99' -PrefixLength 32 -InterfaceAlias 'lo' `
+            -Confirm:$false -ErrorAction SilentlyContinue
+    }
+
+    It 'New-NetIPAddress adds alias to loopback without error' {
+        { New-NetIPAddress -IPAddress '127.0.1.99' -PrefixLength 32 -InterfaceAlias 'lo' } | Should -Not -Throw
+    }
+    It 'alias is visible in Get-NetIPAddress after add' {
+        $addr = Get-NetIPAddress -IPAddress '127.0.1.99'
+        $addr | Should -Not -BeNullOrEmpty
+        $addr.InterfaceAlias | Should -Be 'lo'
+    }
+    It 'Get-NetIPConfiguration -All sees alias on lo' {
+        $cfg = Get-NetIPConfiguration -All | Where-Object { $_.InterfaceAlias -eq 'lo' }
+        $cfg | Should -Not -BeNullOrEmpty
+    }
+    It 'Remove-NetIPAddress removes alias without error' {
+        { Remove-NetIPAddress -IPAddress '127.0.1.99' -PrefixLength 32 -InterfaceAlias 'lo' -Confirm:$false } | Should -Not -Throw
+    }
+    It 'alias gone from Get-NetIPAddress after remove' {
+        Get-NetIPAddress -IPAddress '127.0.1.99' | Should -BeNullOrEmpty
+    }
+}
+
+# ---------------------------------------------------------------------------
+# New-NetRoute / Remove-NetRoute round-trip — Linux + root only
+# ---------------------------------------------------------------------------
+Describe 'New-NetRoute / Remove-NetRoute round-trip' -Skip:(-not $script:isRoot) {
+    BeforeAll {
+        $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Release\net8.0\NetTCPIP.Linux.Native.dll'
+        if (-not (Test-Path $dllPath)) {
+            $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Debug\net8.0\NetTCPIP.Linux.Native.dll'
+        }
+        Import-Module $dllPath -Force
+
+        # Determine default interface (first non-loopback with an IPv4 address)
+        $script:iface = (Get-NetIPAddress -AddressFamily IPv4 |
+            Where-Object { $_.InterfaceAlias -ne 'lo' } |
+            Select-Object -First 1).InterfaceAlias
+
+        # Remove any leftover
+        Remove-NetRoute -DestinationPrefix '192.0.2.0/24' -InterfaceAlias $script:iface `
+            -Confirm:$false -ErrorAction SilentlyContinue
+    }
+
+    AfterAll {
+        Remove-NetRoute -DestinationPrefix '192.0.2.0/24' -InterfaceAlias $script:iface `
+            -Confirm:$false -ErrorAction SilentlyContinue
+    }
+
+    It 'New-NetRoute adds documentation-prefix route without error' {
+        { New-NetRoute -DestinationPrefix '192.0.2.0/24' -InterfaceAlias $script:iface } | Should -Not -Throw
+    }
+    It 'route appears in Get-NetRoute after add' {
+        $route = Get-NetRoute -DestinationPrefix '192.0.2.0/24'
+        $route | Should -Not -BeNullOrEmpty
+    }
+    It 'Remove-NetRoute removes route without error' {
+        { Remove-NetRoute -DestinationPrefix '192.0.2.0/24' -InterfaceAlias $script:iface -Confirm:$false } | Should -Not -Throw
+    }
+    It 'route gone from Get-NetRoute after remove' {
+        Get-NetRoute -DestinationPrefix '192.0.2.0/24' | Should -BeNullOrEmpty
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Get-NetTCPConnection with real listener — Linux, any user
+# ---------------------------------------------------------------------------
+Describe 'Get-NetTCPConnection with real listener' -Skip:(-not $script:isLinux) {
+    BeforeAll {
+        $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Release\net8.0\NetTCPIP.Linux.Native.dll'
+        if (-not (Test-Path $dllPath)) {
+            $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Debug\net8.0\NetTCPIP.Linux.Native.dll'
+        }
+        Import-Module $dllPath -Force
+
+        # Start a background TCP listener on a high port so we can see it
+        $script:listenerPort = 19753
+        $script:listener = [System.Net.Sockets.TcpListener]::new(
+            [System.Net.IPAddress]::Loopback, $script:listenerPort)
+        $script:listener.Start()
+    }
+
+    AfterAll {
+        if ($null -ne $script:listener) {
+            $script:listener.Stop()
+        }
+    }
+
+    It 'listener port appears in Get-NetTCPConnection -State Listen' {
+        $conns = Get-NetTCPConnection -State Listen
+        $conns | Where-Object { $_.LocalPort -eq $script:listenerPort } | Should -Not -BeNullOrEmpty
+    }
+    It 'listener LocalAddress is 127.0.0.1' {
+        $conn = Get-NetTCPConnection -State Listen |
+            Where-Object { $_.LocalPort -eq $script:listenerPort } |
+            Select-Object -First 1
+        $conn.LocalAddress | Should -Be '127.0.0.1'
+    }
+    It 'listener RemotePort is 0' {
+        $conn = Get-NetTCPConnection -State Listen |
+            Where-Object { $_.LocalPort -eq $script:listenerPort } |
+            Select-Object -First 1
+        $conn.RemotePort | Should -Be 0
+    }
+}
