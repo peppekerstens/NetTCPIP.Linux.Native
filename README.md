@@ -1,85 +1,153 @@
 # NetTCPIP.Linux.Native
 
-PowerShell C# binary module providing Windows-compatible `NetTCPIP` cmdlets for Linux via `ip` and `ss`.
+[![Pester Tests](https://github.com/peppekerstens/NetTCPIP.Linux.Native/actions/workflows/pester.yml/badge.svg)](https://github.com/peppekerstens/NetTCPIP.Linux.Native/actions/workflows/pester.yml)
 
-## Cmdlets
+> Native C# binary module implementing Windows-compatible `NetTCPIP` cmdlets for Linux via `iproute2` and `/proc` filesystem parsing.
 
-| Cmdlet | Status | Backend |
-|---|---|---|
-| `Get-NetIPAddress` | ✅ Full | `ip -json addr show` |
-| `Get-NetIPConfiguration` | ✅ Full | `ip -json addr show` + `ip -json route show` |
-| `Get-NetRoute` | ✅ Full | `ip -json route show` (IPv4 + IPv6) |
-| `Get-NetTCPConnection` | ✅ Full | `ss -tnap` |
-| `New-NetIPAddress` | ✅ Full | `ip addr add` |
-| `Remove-NetIPAddress` | ✅ Full | `ip addr del` |
-| `New-NetRoute` | ✅ Full | `ip route add` |
-| `Remove-NetRoute` | ✅ Full | `ip route del` |
-| `New-NetNeighbor` | ✅ Full | `ip neigh add` |
-| `Remove-NetNeighbor` | ✅ Full | `ip neigh del` |
-| `Find-NetRoute` | ⚠️ Stub | — |
-| `Get-NetCompartment` | ⚠️ Stub | — |
-| `Get-NetIPInterface` | ⚠️ Stub | — |
-| `Get-NetIPv4Protocol` | ⚠️ Stub | — |
-| `Get-NetIPv6Protocol` | ⚠️ Stub | — |
-| `Get-NetNeighbor` | ⚠️ Stub | — |
-| `Get-NetOffloadGlobalSetting` | ⚠️ Stub | — |
-| `Get-NetPrefixPolicy` | ⚠️ Stub | — |
-| `Get-NetTCPSetting` | ⚠️ Stub | — |
-| `Get-NetTransportFilter` | ⚠️ Stub | — |
-| `Get-NetUDPEndpoint` | ⚠️ Stub | — |
-| `Get-NetUDPSetting` | ⚠️ Stub | — |
-| `New-NetTransportFilter` | ⚠️ Stub | — |
-| `Remove-NetTransportFilter` | ⚠️ Stub | — |
-| `Set-NetIPAddress` | ⚠️ Stub | — |
-| `Set-NetIPInterface` | ⚠️ Stub | — |
-| `Set-NetIPv4Protocol` | ⚠️ Stub | — |
-| `Set-NetIPv6Protocol` | ⚠️ Stub | — |
-| `Set-NetNeighbor` | ⚠️ Stub | — |
-| `Set-NetOffloadGlobalSetting` | ⚠️ Stub | — |
-| `Set-NetRoute` | ⚠️ Stub | — |
-| `Set-NetTCPSetting` | ⚠️ Stub | — |
-| `Set-NetUDPSetting` | ⚠️ Stub | — |
-| `Test-NetConnection` | ⚠️ Stub | — |
+This is the Tier 2 (C# native) successor to [`NetTCPIP.Linux`](https://github.com/peppekerstens/NetTCPIP.Linux), part of Stage 5 of the [PowerShell Linux Commands](https://peppekerstens.github.io) project.
 
-Stubs write a `NotSupportedException` `ErrorRecord` and are intentionally not silent.
+---
+
+## What it does
+
+Provides the core `NetTCPIP` cmdlet surface for Linux. Read operations (`Get-*`) parse `/proc/net/` files and use the BCL's `NetworkInterface` APIs — no subprocesses for enumeration. Write operations (`New-`/`Remove-`) invoke `ip` from `iproute2`.
+
+| Cmdlet | Status | Backend | Notes |
+|---|---|---|---|
+| `Get-NetIPAddress` | Full | BCL `NetworkInterface` + `/proc` | IPv4 + IPv6; wildcard filter |
+| `Get-NetIPConfiguration` | Full | BCL `NetworkInterface` + `/proc/net/route` | Per-interface summary |
+| `Get-NetRoute` | Full | `/proc/net/route` (IPv4) + `/proc/net/ipv6_route` (IPv6) | |
+| `Get-NetTCPConnection` | Full | `/proc/net/tcp` + `/proc/net/tcp6` + `/proc/<pid>/fd/` | State, local/remote endpoint, PID |
+| `New-NetIPAddress` | Full | `ip addr add` | Requires root |
+| `Remove-NetIPAddress` | Full | `ip addr del` | Requires root |
+| `New-NetRoute` | Full | `ip route add` | Requires root |
+| `Remove-NetRoute` | Full | `ip route del` | Requires root |
+| `New-NetNeighbor` | Full | `ip neigh add` | Requires root |
+| `Remove-NetNeighbor` | Full | `ip neigh del` | Requires root |
+| `Find-NetRoute` | Stub | — | |
+| `Get-NetCompartment` | Stub | — | |
+| `Get-NetIPInterface` | Stub | — | |
+| `Get-NetIPv4Protocol` | Stub | — | |
+| `Get-NetIPv6Protocol` | Stub | — | |
+| `Get-NetNeighbor` | Stub | — | |
+| `Get-NetOffloadGlobalSetting` | Stub | — | |
+| `Get-NetPrefixPolicy` | Stub | — | |
+| `Get-NetTCPSetting` | Stub | — | |
+| `Get-NetTransportFilter` | Stub | — | |
+| `Get-NetUDPEndpoint` | Stub | — | |
+| `Get-NetUDPSetting` | Stub | — | |
+| `New-NetTransportFilter` | Stub | — | |
+| `Remove-NetTransportFilter` | Stub | — | |
+| `Set-NetIPAddress` | Stub | — | |
+| `Set-NetIPInterface` | Stub | — | |
+| `Set-NetIPv4Protocol` | Stub | — | |
+| `Set-NetIPv6Protocol` | Stub | — | |
+| `Set-NetNeighbor` | Stub | — | |
+| `Set-NetOffloadGlobalSetting` | Stub | — | |
+| `Set-NetRoute` | Stub | — | |
+| `Set-NetTCPSetting` | Stub | — | |
+| `Set-NetUDPSetting` | Stub | — | |
+| `Test-NetConnection` | Stub | — | |
+
+Stubs write a `NotSupportedException` error record — they are intentionally not silent.
+
+All write cmdlets support `-WhatIf` and `-Confirm`.
+
+---
+
+## Requirements
+
+- Linux with `iproute2` (`ip` command) for write operations
+- PowerShell 7.4+, .NET 8
+- Root for all `New-`/`Remove-` cmdlets
+
+---
+
+## Installation
+
+```powershell
+git clone https://github.com/peppekerstens/NetTCPIP.Linux.Native
+dotnet build NetTCPIP.Linux.Native/src/NetTCPIP.Linux.Native --configuration Release
+Import-Module ./NetTCPIP.Linux.Native/src/NetTCPIP.Linux.Native/bin/Release/net8.0/NetTCPIP.Linux.Native.dll
+```
+
+---
 
 ## Usage
 
 ```powershell
-# Build
-dotnet build src/NetTCPIP.Linux.Native --configuration Release
-
-# Import
-Import-Module ./src/NetTCPIP.Linux.Native/bin/Release/net8.0/NetTCPIP.Linux.Native.dll
-
 # List all IP addresses
 Get-NetIPAddress
 
-# List IPv4 only
+# Filter IPv4 only
 Get-NetIPAddress -AddressFamily IPv4
 
-# Show routing table
+# Show the routing table
 Get-NetRoute
 
-# Show TCP connections
+# Show listening TCP ports
 Get-NetTCPConnection -State Listen
 
-# Interface summary
+# Per-interface summary
 Get-NetIPConfiguration
 
-# Add/remove an IP address (requires root)
+# Add an IP address (root required)
 New-NetIPAddress -IPAddress '10.10.10.1' -PrefixLength 24 -InterfaceAlias 'eth0'
+
+# Remove an IP address (root required)
 Remove-NetIPAddress -IPAddress '10.10.10.1' -PrefixLength 24 -InterfaceAlias 'eth0'
+
+# Add a static route (root required)
+New-NetRoute -DestinationPrefix '192.168.100.0/24' -NextHop '10.10.10.254' -InterfaceAlias 'eth0'
 ```
 
-## Requirements
+---
 
-- Linux with `iproute2` (`ip`) and `ss` (from `iproute2` or `socket_statistics`)
-- .NET 8 SDK (build) / Runtime (run)
-- PowerShell 7.2+
-- Root for write operations (`New-`/`Remove-` cmdlets)
+## CI / Testing
 
-## Stage
+Tested across 5 Linux distributions in containers on every push. Write-path tests run with `--privileged`:
 
-Part of the [opencode](https://github.com/peppekerstens/opencode) multi-stage project:
-Tier 2 Priority 3 — C# binary module porting the Stage 1 PowerShell implementation.
+| Distro | Image |
+|---|---|
+| Ubuntu 24.04 | `ghcr.io/peppekerstens/pwsh-pester-ubuntu:24.04` |
+| Debian 12 | `ghcr.io/peppekerstens/pwsh-pester-debian:12` |
+| Fedora 40 | `ghcr.io/peppekerstens/pwsh-pester-fedora:40` |
+| openSUSE Tumbleweed | `ghcr.io/peppekerstens/pwsh-pester-opensuse:tumbleweed` |
+| Arch Linux | `ghcr.io/peppekerstens/pwsh-pester-arch:latest` |
+
+Run locally:
+
+```powershell
+Invoke-Pester -Path tests/NetTCPIP.Linux.Native.Tests/ -Output Detailed
+```
+
+---
+
+## Implementation Notes
+
+- **Zero subprocesses for reads**: `Get-NetIPAddress` and `Get-NetIPConfiguration` use the BCL's `NetworkInterface` APIs. `Get-NetRoute` parses `/proc/net/route` (IPv4, hex little-endian) and `/proc/net/ipv6_route` (IPv6, 32-char big-endian hex). `Get-NetTCPConnection` parses `/proc/net/tcp` and `/proc/net/tcp6`, then resolves PIDs by scanning `/proc/<pid>/fd/` for `socket:[inode]` symlinks.
+- **Write paths keep `ip`**: Netlink socket P/Invoke for route/address mutation is out of scope. `Process.Start(ip)` is the correct and standard approach.
+- **`AddressValidLifetime` / `AddressPreferredLifetime`**: Windows-only BCL properties; on Linux these fields are not exposed via the BCL, so the module returns `TimeSpan.MaxValue` (infinite) for both.
+- **`ConfirmImpact.High`** on all destructive cmdlets.
+
+---
+
+## Version history
+
+| Version | Changes |
+|---|---|
+| 0.1.0 | Initial release. 10 full cmdlets, 24 stubs. BCL + `/proc` read paths. `ip` write paths. |
+
+---
+
+## Related
+
+- [`NetTCPIP.Linux`](https://github.com/peppekerstens/NetTCPIP.Linux) — the Stage 1 PowerShell script wrapper this module replaces
+- [opencode project plan](https://github.com/peppekerstens/opencode) — multi-stage project tracking
+- [Blog series](https://peppekerstens.github.io) — write-up of the full journey
+
+---
+
+## License
+
+[GNU General Public License v3](LICENSE)
