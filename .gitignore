@@ -1,0 +1,11 @@
+# NetTCPIP.Linux.Native — git ignore
+
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.nupkg
+TestResults/
+.DS_Store
+Thumbs.db
