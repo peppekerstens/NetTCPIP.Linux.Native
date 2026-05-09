@@ -109,11 +109,26 @@ Tested across 5 Linux distributions in containers on every push. Write-path test
 
 | Distro | Image |
 |---|---|
-| Ubuntu 24.04 | `ghcr.io/peppekerstens/pwsh-pester-ubuntu:24.04` |
-| Debian 12 | `ghcr.io/peppekerstens/pwsh-pester-debian:12` |
-| Fedora 40 | `ghcr.io/peppekerstens/pwsh-pester-fedora:40` |
-| openSUSE Tumbleweed | `ghcr.io/peppekerstens/pwsh-pester-opensuse:tumbleweed` |
-| Arch Linux | `ghcr.io/peppekerstens/pwsh-pester-arch:latest` |
+| Ubuntu 22.04 | `peppekerstens/testinfra:ubuntu2204` |
+| Ubuntu 24.04 | `peppekerstens/testinfra:ubuntu2404` |
+| Debian 12 | `peppekerstens/testinfra:debian12` |
+| Fedora 41 | `peppekerstens/testinfra:fedora41` |
+| openSUSE Tumbleweed | `peppekerstens/testinfra:opensuse-tumbleweed` |
+
+### Test scenarios
+
+| Describe block | Scope | Tests |
+|---|---|---|
+| Module surface | everywhere | 34 cmdlet export checks |
+| Stub cmdlets write ErrorRecord | everywhere | 13 stub error record checks |
+| WhatIf safety | everywhere | New/Remove NetIPAddress, New/Remove NetRoute, New/Remove NetNeighbor |
+| Get-NetIPAddress | Linux (any user) | Returns addresses; IPAddress, InterfaceAlias, AddressFamily fields; filter by family; loopback 127.0.0.1; wildcard; nonexistent empty |
+| Get-NetRoute | Linux (any user) | Returns routes; DestinationPrefix field; AddressFamily filter; default route |
+| Get-NetTCPConnection | Linux (any user) | Returns array; LISTEN sockets have RemotePort 0; valid State values |
+| Get-NetIPConfiguration | Linux (any user) | Returns interfaces; InterfaceAlias field; loopback excluded by default; -All includes lo; wildcard |
+| **Loopback alias add/remove** | **Linux + root** | **New-NetIPAddress adds 127.0.1.99/32 to lo; Get-NetIPAddress sees it; Get-NetIPConfiguration -All sees it; Remove-NetIPAddress removes it; gone from Get-NetIPAddress** |
+| **Route round-trip** | **Linux + root** | **New-NetRoute adds 192.0.2.0/24; Get-NetRoute sees it; Remove-NetRoute removes it; gone from Get-NetRoute** |
+| **Real TCP listener** | **Linux (any user)** | **TcpListener on port 19753; Get-NetTCPConnection -State Listen finds it; LocalAddress = 127.0.0.1; RemotePort = 0** |
 
 Run locally:
 
@@ -137,6 +152,7 @@ Invoke-Pester -Path tests/NetTCPIP.Linux.Native.Tests/ -Output Detailed
 | Version | Changes |
 |---|---|
 | 0.1.0 | Initial release. 10 full cmdlets, 24 stubs. BCL + `/proc` read paths. `ip` write paths. |
+| 0.2.0 | Test expansion. Loopback alias add/remove round-trip; route round-trip; real `TcpListener` port filter for `Get-NetTCPConnection`; `Get-NetIPConfiguration -All` loopback check. |
 
 ---
 
