@@ -118,7 +118,7 @@ public sealed class GetNetUDPSettingCommand : PSCmdlet
 }
 
 // ---- New-NetTransportFilter ----
-[Cmdlet(VerbsCommon.New, "NetTransportFilter", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.New, "NetTransportFilter")]
 public sealed class NewNetTransportFilterCommand : PSCmdlet
 {
     [Parameter(Mandatory = true)] public string? SettingName { get; set; }
@@ -126,7 +126,7 @@ public sealed class NewNetTransportFilterCommand : PSCmdlet
 }
 
 // ---- Remove-NetTransportFilter ----
-[Cmdlet(VerbsCommon.Remove, "NetTransportFilter", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Remove, "NetTransportFilter")]
 public sealed class RemoveNetTransportFilterCommand : PSCmdlet
 {
     [Parameter(Mandatory = true)] public string? SettingName { get; set; }
@@ -134,7 +134,7 @@ public sealed class RemoveNetTransportFilterCommand : PSCmdlet
 }
 
 // ---- Set-NetIPAddress ----
-[Cmdlet(VerbsCommon.Set, "NetIPAddress", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetIPAddress")]
 public sealed class SetNetIPAddressCommand : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)] public string? IPAddress    { get; set; }
@@ -143,7 +143,7 @@ public sealed class SetNetIPAddressCommand : PSCmdlet
 }
 
 // ---- Set-NetIPInterface ----
-[Cmdlet(VerbsCommon.Set, "NetIPInterface", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetIPInterface")]
 public sealed class SetNetIPInterfaceCommand : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)] public string[]? InterfaceAlias { get; set; }
@@ -151,21 +151,21 @@ public sealed class SetNetIPInterfaceCommand : PSCmdlet
 }
 
 // ---- Set-NetIPv4Protocol ----
-[Cmdlet(VerbsCommon.Set, "NetIPv4Protocol", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetIPv4Protocol")]
 public sealed class SetNetIPv4ProtocolCommand : PSCmdlet
 {
     protected override void ProcessRecord() => StubHelper.Stub(this, "Set-NetIPv4Protocol");
 }
 
 // ---- Set-NetIPv6Protocol ----
-[Cmdlet(VerbsCommon.Set, "NetIPv6Protocol", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetIPv6Protocol")]
 public sealed class SetNetIPv6ProtocolCommand : PSCmdlet
 {
     protected override void ProcessRecord() => StubHelper.Stub(this, "Set-NetIPv6Protocol");
 }
 
 // ---- Set-NetNeighbor ----
-[Cmdlet(VerbsCommon.Set, "NetNeighbor", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetNeighbor")]
 public sealed class SetNetNeighborCommand : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)] public string? IPAddress        { get; set; }
@@ -175,14 +175,14 @@ public sealed class SetNetNeighborCommand : PSCmdlet
 }
 
 // ---- Set-NetOffloadGlobalSetting ----
-[Cmdlet(VerbsCommon.Set, "NetOffloadGlobalSetting", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetOffloadGlobalSetting")]
 public sealed class SetNetOffloadGlobalSettingCommand : PSCmdlet
 {
     protected override void ProcessRecord() => StubHelper.Stub(this, "Set-NetOffloadGlobalSetting");
 }
 
 // ---- Set-NetRoute ----
-[Cmdlet(VerbsCommon.Set, "NetRoute", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetRoute")]
 public sealed class SetNetRouteCommand : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)] public string? DestinationPrefix { get; set; }
@@ -192,7 +192,7 @@ public sealed class SetNetRouteCommand : PSCmdlet
 }
 
 // ---- Set-NetTCPSetting ----
-[Cmdlet(VerbsCommon.Set, "NetTCPSetting", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetTCPSetting")]
 public sealed class SetNetTCPSettingCommand : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)] public string? SettingName { get; set; }
@@ -200,7 +200,7 @@ public sealed class SetNetTCPSettingCommand : PSCmdlet
 }
 
 // ---- Set-NetUDPSetting ----
-[Cmdlet(VerbsCommon.Set, "NetUDPSetting", SupportsShouldProcess = true)]
+[Cmdlet(VerbsCommon.Set, "NetUDPSetting")]
 public sealed class SetNetUDPSettingCommand : PSCmdlet
 {
     protected override void ProcessRecord() => StubHelper.Stub(this, "Set-NetUDPSetting");

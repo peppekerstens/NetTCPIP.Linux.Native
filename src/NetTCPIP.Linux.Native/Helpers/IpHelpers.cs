@@ -28,13 +28,14 @@ internal static class IpHelpers
     // GET IP ADDRESSES — BCL NetworkInterface
     // -----------------------------------------------------------------------
 
-    internal static List<NetIPAddress> GetIPAddresses()
+    internal static List<NetIPAddress> GetIPAddresses(NetworkInterface[]? nics = null)
     {
         var results = new List<NetIPAddress>();
 
         try
         {
-            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            nics ??= NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var nic in nics)
             {
                 var ipProps = nic.GetIPProperties();
                 int ifIndex = nic.GetIPProperties().GetIPv4Properties()?.Index
@@ -77,9 +78,9 @@ internal static class IpHelpers
     // GET ROUTES — /proc/net/route (IPv4) + /proc/net/ipv6_route (IPv6)
     // -----------------------------------------------------------------------
 
-    internal static List<NetRoute> GetRoutes()
+    internal static List<NetRoute> GetRoutes(NetworkInterface[]? nics = null)
     {
-        var linkMap = BuildLinkMap();
+        var linkMap = BuildLinkMap(nics);
         var results = new List<NetRoute>();
 
         // IPv4: /proc/net/route
@@ -229,8 +230,12 @@ internal static class IpHelpers
 
     internal static List<NetIPConfiguration> GetIPConfiguration(bool includeLoopback)
     {
-        var addresses = GetIPAddresses();
-        var routes    = GetRoutes();
+        NetworkInterface[] nics;
+        try { nics = NetworkInterface.GetAllNetworkInterfaces(); }
+        catch { return []; }
+
+        var addresses = GetIPAddresses(nics);
+        var routes    = GetRoutes(nics);
 
         // Find default IPv4 gateway (dest 0.0.0.0/0, IPv4, with a real nexthop)
         string? defaultGw = routes
@@ -248,33 +253,29 @@ internal static class IpHelpers
 
         // Enumerate interfaces preserving order from BCL
         var results = new List<NetIPConfiguration>();
-        try
+        foreach (var nic in nics)
         {
-            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            if (!includeLoopback && nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+            var ifIndex = nic.GetIPProperties().GetIPv4Properties()?.Index
+                          ?? nic.GetIPProperties().GetIPv6Properties()?.Index
+                          ?? 0;
+
+            var addrs = byIface.GetValueOrDefault(nic.Name, []);
+            var ipv4  = addrs.FirstOrDefault(a => a.AddressFamily == "IPv4")?.IPAddress;
+            var ipv6  = addrs.FirstOrDefault(a => a.AddressFamily == "IPv6"
+                                                   && !a.IPAddress.StartsWith("fe80", StringComparison.OrdinalIgnoreCase))?.IPAddress;
+
+            results.Add(new NetIPConfiguration
             {
-                if (!includeLoopback && nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-
-                var ifIndex = nic.GetIPProperties().GetIPv4Properties()?.Index
-                              ?? nic.GetIPProperties().GetIPv6Properties()?.Index
-                              ?? 0;
-
-                var addrs = byIface.GetValueOrDefault(nic.Name, []);
-                var ipv4  = addrs.FirstOrDefault(a => a.AddressFamily == "IPv4")?.IPAddress;
-                var ipv6  = addrs.FirstOrDefault(a => a.AddressFamily == "IPv6"
-                                                       && !a.IPAddress.StartsWith("fe80", StringComparison.OrdinalIgnoreCase))?.IPAddress;
-
-                results.Add(new NetIPConfiguration
-                {
-                    InterfaceAlias       = nic.Name,
-                    InterfaceIndex       = ifIndex,
-                    InterfaceDescription = nic.Description,
-                    IPv4Address          = ipv4,
-                    IPv4DefaultGateway   = defaultGw,
-                    IPv6Address          = ipv6,
-                });
-            }
+                InterfaceAlias       = nic.Name,
+                InterfaceIndex       = ifIndex,
+                InterfaceDescription = nic.Description,
+                IPv4Address          = ipv4,
+                IPv4DefaultGateway   = defaultGw,
+                IPv6Address          = ipv6,
+            });
         }
-        catch { /* non-Linux */ }
 
         return results;
     }
@@ -312,12 +313,13 @@ internal static class IpHelpers
     // -----------------------------------------------------------------------
 
     // Build interface-name → interface-index map using BCL (no subprocess).
-    private static Dictionary<string, int> BuildLinkMap()
+    private static Dictionary<string, int> BuildLinkMap(NetworkInterface[]? nics = null)
     {
         var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            nics ??= NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var nic in nics)
             {
                 var idx = nic.GetIPProperties().GetIPv4Properties()?.Index
                           ?? nic.GetIPProperties().GetIPv6Properties()?.Index
@@ -434,23 +436,29 @@ internal static class IpHelpers
     // -----------------------------------------------------------------------
 
     private static void RunIpVoid(params string[] args)
-        => RunProcess("ip", string.Join(' ', args));
-
-    private static string RunProcess(string exe, string arguments)
     {
-        var psi = new ProcessStartInfo(exe, arguments)
+        var (stdout, exit) = RunProcess("ip", args);
+        if (exit != 0)
+            throw new InvalidOperationException($"ip {string.Join(' ', args)} failed (exit {exit}): {stdout}");
+    }
+
+    private static (string Stdout, int ExitCode) RunProcess(string exe, params string[] args)
+    {
+        var psi = new ProcessStartInfo(exe)
         {
             RedirectStandardOutput = true,
             RedirectStandardError  = true,
             UseShellExecute        = false,
         };
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
         try
         {
             using var proc = Process.Start(psi)!;
             var stdout = proc.StandardOutput.ReadToEnd();
             proc.WaitForExit();
-            return stdout;
+            return (stdout, proc.ExitCode);
         }
-        catch { return string.Empty; }
+        catch { return (string.Empty, -1); }
     }
 }
