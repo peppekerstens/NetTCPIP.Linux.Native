@@ -6,9 +6,9 @@
 
 BeforeDiscovery {
     $script:onLinux = $IsLinux
-    $script:isRoot  = $IsLinux -and (
-                          [System.IO.File]::ReadAllText('/proc/self/status') -match '(?m)^Uid:\s+(\d+)' -and
-                          $Matches[1] -eq '0')
+    $script:isRoot = $IsLinux -and (
+        [System.IO.File]::ReadAllText('/proc/self/status') -match '(?m)^Uid:\s+(\d+)' -and
+        $Matches[1] -eq '0')
 }
 
 # ---------------------------------------------------------------------------
@@ -70,10 +70,10 @@ Describe 'Stub cmdlets write ErrorRecord' {
     )
 
     It 'stub <_> writes an error' -ForEach @(
-        'Find-NetRoute','Get-NetCompartment','Get-NetIPInterface',
-        'Get-NetIPv4Protocol','Get-NetIPv6Protocol','Get-NetNeighbor',
-        'Get-NetOffloadGlobalSetting','Get-NetPrefixPolicy','Get-NetTCPSetting',
-        'Get-NetTransportFilter','Get-NetUDPEndpoint','Get-NetUDPSetting',
+        'Find-NetRoute', 'Get-NetCompartment', 'Get-NetIPInterface',
+        'Get-NetIPv4Protocol', 'Get-NetIPv6Protocol', 'Get-NetNeighbor',
+        'Get-NetOffloadGlobalSetting', 'Get-NetPrefixPolicy', 'Get-NetTCPSetting',
+        'Get-NetTransportFilter', 'Get-NetUDPEndpoint', 'Get-NetUDPSetting',
         'Test-NetConnection'
     ) {
         $err = @()
@@ -115,6 +115,73 @@ Describe 'WhatIf safety' {
 }
 
 # ---------------------------------------------------------------------------
+# Elevation errors — Linux + non-root only
+# ---------------------------------------------------------------------------
+Describe 'Elevation errors' -Skip:($script:isRoot -or -not $script:onLinux) {
+    BeforeAll {
+        $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Release\net8.0\NetTCPIP.Linux.Native.dll'
+        if (-not (Test-Path $dllPath)) {
+            $dllPath = Join-Path $PSScriptRoot '..\..\src\NetTCPIP.Linux.Native\bin\Debug\net8.0\NetTCPIP.Linux.Native.dll'
+        }
+        Import-Module $dllPath -Force
+    }
+
+    It 'New-NetIPAddress writes a meaningful error when not root' {
+        $err = @()
+        New-NetIPAddress -IPAddress '192.0.2.1' -PrefixLength 24 -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'New-NetIPAddress requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.NewNetIPAddressCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+
+    It 'Remove-NetIPAddress writes a meaningful error when not root' {
+        $err = @()
+        Remove-NetIPAddress -IPAddress '192.0.2.1' -PrefixLength 24 -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'Remove-NetIPAddress requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.RemoveNetIPAddressCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+
+    It 'New-NetRoute writes a meaningful error when not root' {
+        $err = @()
+        New-NetRoute -DestinationPrefix '10.0.0.0/8' -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'New-NetRoute requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.NewNetRouteCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+
+    It 'Remove-NetRoute writes a meaningful error when not root' {
+        $err = @()
+        Remove-NetRoute -DestinationPrefix '10.0.0.0/8' -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'Remove-NetRoute requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.RemoveNetRouteCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+
+    It 'New-NetNeighbor writes a meaningful error when not root' {
+        $err = @()
+        New-NetNeighbor -IPAddress '192.0.2.1' -LinkLayerAddress 'aa:bb:cc:dd:ee:ff' -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'New-NetNeighbor requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.NewNetNeighborCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+
+    It 'Remove-NetNeighbor writes a meaningful error when not root' {
+        $err = @()
+        Remove-NetNeighbor -IPAddress '192.0.2.1' -InterfaceAlias 'eth0' -ErrorVariable err -ErrorAction SilentlyContinue
+        $err.Count | Should -BeGreaterThan 0
+        $err[0].Exception.Message | Should -Be 'Remove-NetNeighbor requires root privileges.'
+        $err[0].FullyQualifiedErrorId | Should -Be 'ElevationRequired,Microsoft.PowerShell.Commands.RemoveNetNeighborCommand'
+        $err[0].CategoryInfo.Category | Should -Be 'PermissionDenied'
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Read-only integration (Linux, any user)
 # ---------------------------------------------------------------------------
 Describe 'Get-NetIPAddress integration' -Skip:(-not $script:onLinux) {
@@ -137,7 +204,7 @@ Describe 'Get-NetIPAddress integration' -Skip:(-not $script:onLinux) {
         Get-NetIPAddress | ForEach-Object { $_.InterfaceAlias | Should -Not -BeNullOrEmpty }
     }
     It 'AddressFamily is IPv4 or IPv6' {
-        Get-NetIPAddress | ForEach-Object { $_.AddressFamily | Should -BeIn @('IPv4','IPv6') }
+        Get-NetIPAddress | ForEach-Object { $_.AddressFamily | Should -BeIn @('IPv4', 'IPv6') }
     }
     It '-AddressFamily IPv4 returns only IPv4' {
         $result = Get-NetIPAddress -AddressFamily IPv4
@@ -176,7 +243,7 @@ Describe 'Get-NetRoute integration' -Skip:(-not $script:onLinux) {
         Get-NetRoute | ForEach-Object { $_.DestinationPrefix | Should -Not -BeNullOrEmpty }
     }
     It 'AddressFamily is IPv4 or IPv6' {
-        Get-NetRoute | ForEach-Object { $_.AddressFamily | Should -BeIn @('IPv4','IPv6') }
+        Get-NetRoute | ForEach-Object { $_.AddressFamily | Should -BeIn @('IPv4', 'IPv6') }
     }
     It '-AddressFamily IPv4 returns only IPv4 routes' {
         Get-NetRoute -AddressFamily IPv4 | ForEach-Object { $_.AddressFamily | Should -Be 'IPv4' }
@@ -206,7 +273,7 @@ Describe 'Get-NetTCPConnection integration' -Skip:(-not $script:onLinux) {
         $listen | ForEach-Object { $_.RemotePort | Should -Be 0 }
     }
     It 'State values are valid strings' {
-        $valid = @('Closed','Listen','SynSent','SynReceived','Established','FinWait1','FinWait2','CloseWait','Closing','LastAck','TimeWait','DeleteTCB','Bound')
+        $valid = @('Closed', 'Listen', 'SynSent', 'SynReceived', 'Established', 'FinWait1', 'FinWait2', 'CloseWait', 'Closing', 'LastAck', 'TimeWait', 'DeleteTCB', 'Bound')
         Get-NetTCPConnection | ForEach-Object { $_.State | Should -BeIn $valid }
     }
 }
@@ -295,8 +362,8 @@ Describe 'New-NetRoute / Remove-NetRoute round-trip' -Skip:(-not $script:isRoot)
 
         # Determine default interface (first non-loopback with an IPv4 address)
         $script:iface = (Get-NetIPAddress -AddressFamily IPv4 |
-            Where-Object { $_.InterfaceAlias -ne 'lo' } |
-            Select-Object -First 1).InterfaceAlias
+                Where-Object { $_.InterfaceAlias -ne 'lo' } |
+                Select-Object -First 1).InterfaceAlias
 
         # Remove any leftover
         Remove-NetRoute -DestinationPrefix '192.0.2.0/24' -InterfaceAlias $script:iface `
