@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // Commands/StubCommands.cs
 // Stub cmdlets for NetTCPIP.Linux.Native.
 // Each writes a NotSupportedException ErrorRecord. Matching the PS reference behaviour.

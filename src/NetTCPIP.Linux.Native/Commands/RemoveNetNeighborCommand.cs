@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // Commands/RemoveNetNeighborCommand.cs
 using System.Management.Automation;
 

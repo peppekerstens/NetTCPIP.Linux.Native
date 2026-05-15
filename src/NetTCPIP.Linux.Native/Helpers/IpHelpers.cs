@@ -437,12 +437,12 @@ internal static class IpHelpers
 
     private static void RunIpVoid(params string[] args)
     {
-        var (stdout, exit) = RunProcess("ip", args);
+        var (stdout, stderr, exit) = RunProcess("ip", args);
         if (exit != 0)
-            throw new InvalidOperationException($"ip {string.Join(' ', args)} failed (exit {exit}): {stdout}");
+            throw new InvalidOperationException($"ip {string.Join(' ', args)} failed (exit {exit}): {stdout}{(stderr.Length > 0 ? " — " + stderr : "")}");
     }
 
-    private static (string Stdout, int ExitCode) RunProcess(string exe, params string[] args)
+    private static (string Stdout, string Stderr, int ExitCode) RunProcess(string exe, params string[] args)
     {
         var psi = new ProcessStartInfo(exe)
         {
@@ -455,10 +455,15 @@ internal static class IpHelpers
         try
         {
             using var proc = Process.Start(psi)!;
-            var stdout = proc.StandardOutput.ReadToEnd();
+            // Read stdout and stderr concurrently to avoid deadlock when either
+            // pipe buffer fills. Safe: cmdlets run on thread-pool threads with
+            // no SynchronizationContext.
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+            var stderrTask = proc.StandardError.ReadToEndAsync();
+            System.Threading.Tasks.Task.WaitAll(stdoutTask, stderrTask);
             proc.WaitForExit();
-            return (stdout, proc.ExitCode);
+            return (stdoutTask.Result, stderrTask.Result, proc.ExitCode);
         }
-        catch { return (string.Empty, -1); }
+        catch { return (string.Empty, string.Empty, -1); }
     }
 }

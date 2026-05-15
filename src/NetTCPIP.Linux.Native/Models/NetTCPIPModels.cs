@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // Models/NetTCPIPModels.cs
 // Output types for NetTCPIP.Linux.Native — mirrors Windows NetTCPIP module object shapes.
 
