@@ -16,7 +16,19 @@ public sealed class RemoveNetIPAddressCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess($"{IPAddress}/{PrefixLength} on {InterfaceAlias}", "Remove-NetIPAddress")) return;
-        try { IpHelpers.RemoveIPAddress(IPAddress, PrefixLength, InterfaceAlias); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "RemoveIPAddressFailed", ErrorCategory.InvalidOperation, IPAddress)); }
+        var (exit, stderr) = IpHelpers.RemoveIPAddress(IPAddress, PrefixLength, InterfaceAlias);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("Remove-NetIPAddress requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, IPAddress));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip addr del failed (exit {exit}): {stderr.Trim()}"),
+                "RemoveIPAddressFailed", ErrorCategory.InvalidOperation, IPAddress));
+        }
     }
 }

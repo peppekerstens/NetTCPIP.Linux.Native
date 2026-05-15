@@ -15,7 +15,19 @@ public sealed class RemoveNetNeighborCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess($"{IPAddress} on {InterfaceAlias}", "Remove-NetNeighbor")) return;
-        try { IpHelpers.RemoveNeighbor(IPAddress, InterfaceAlias); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "RemoveNeighborFailed", ErrorCategory.InvalidOperation, IPAddress)); }
+        var (exit, stderr) = IpHelpers.RemoveNeighbor(IPAddress, InterfaceAlias);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("Remove-NetNeighbor requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, IPAddress));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip neigh del failed (exit {exit}): {stderr.Trim()}"),
+                "RemoveNeighborFailed", ErrorCategory.InvalidOperation, IPAddress));
+        }
     }
 }

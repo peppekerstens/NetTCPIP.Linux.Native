@@ -18,8 +18,21 @@ public sealed class NewNetRouteCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess(DestinationPrefix, "New-NetRoute")) return;
-        try { IpHelpers.AddRoute(DestinationPrefix, NextHop, InterfaceAlias, RouteMetric); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "AddRouteFailed", ErrorCategory.InvalidOperation, DestinationPrefix)); return; }
+        var (exit, stderr) = IpHelpers.AddRoute(DestinationPrefix, NextHop, InterfaceAlias, RouteMetric);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("New-NetRoute requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, DestinationPrefix));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip route add failed (exit {exit}): {stderr.Trim()}"),
+                "AddRouteFailed", ErrorCategory.InvalidOperation, DestinationPrefix));
+            return;
+        }
         var result = IpHelpers.GetRoutes().FirstOrDefault(r =>
             r.DestinationPrefix == DestinationPrefix && r.InterfaceAlias == InterfaceAlias);
         if (result != null) WriteObject(result);

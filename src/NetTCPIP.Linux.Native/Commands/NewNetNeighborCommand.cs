@@ -16,7 +16,19 @@ public sealed class NewNetNeighborCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess($"{IPAddress} on {InterfaceAlias}", "New-NetNeighbor")) return;
-        try { IpHelpers.AddNeighbor(IPAddress, LinkLayerAddress, InterfaceAlias); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "AddNeighborFailed", ErrorCategory.InvalidOperation, IPAddress)); }
+        var (exit, stderr) = IpHelpers.AddNeighbor(IPAddress, LinkLayerAddress, InterfaceAlias);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("New-NetNeighbor requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, IPAddress));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip neigh add failed (exit {exit}): {stderr.Trim()}"),
+                "AddNeighborFailed", ErrorCategory.InvalidOperation, IPAddress));
+        }
     }
 }

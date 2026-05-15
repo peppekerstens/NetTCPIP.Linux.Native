@@ -15,7 +15,19 @@ public sealed class RemoveNetRouteCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess(DestinationPrefix, "Remove-NetRoute")) return;
-        try { IpHelpers.RemoveRoute(DestinationPrefix, InterfaceAlias); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "RemoveRouteFailed", ErrorCategory.InvalidOperation, DestinationPrefix)); }
+        var (exit, stderr) = IpHelpers.RemoveRoute(DestinationPrefix, InterfaceAlias);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("Remove-NetRoute requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, DestinationPrefix));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip route del failed (exit {exit}): {stderr.Trim()}"),
+                "RemoveRouteFailed", ErrorCategory.InvalidOperation, DestinationPrefix));
+        }
     }
 }

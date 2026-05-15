@@ -284,29 +284,29 @@ internal static class IpHelpers
     // WRITE HELPERS — subprocess (ip): no kernel BCL API for Netlink writes
     // -----------------------------------------------------------------------
 
-    internal static void AddIPAddress(string ipAddress, int prefixLength, string interfaceAlias)
-        => RunIpVoid("addr", "add", $"{ipAddress}/{prefixLength}", "dev", interfaceAlias);
+    internal static (int ExitCode, string Stderr) AddIPAddress(string ipAddress, int prefixLength, string interfaceAlias)
+        => RunIp("addr", "add", $"{ipAddress}/{prefixLength}", "dev", interfaceAlias);
 
-    internal static void RemoveIPAddress(string ipAddress, int prefixLength, string interfaceAlias)
-        => RunIpVoid("addr", "del", $"{ipAddress}/{prefixLength}", "dev", interfaceAlias);
+    internal static (int ExitCode, string Stderr) RemoveIPAddress(string ipAddress, int prefixLength, string interfaceAlias)
+        => RunIp("addr", "del", $"{ipAddress}/{prefixLength}", "dev", interfaceAlias);
 
-    internal static void AddRoute(string dest, string? gateway, string interfaceAlias, int metric)
+    internal static (int ExitCode, string Stderr) AddRoute(string dest, string? gateway, string interfaceAlias, int metric)
     {
         var args = new List<string> { "route", "add", dest };
         if (!string.IsNullOrEmpty(gateway)) { args.Add("via"); args.Add(gateway); }
         args.AddRange(["dev", interfaceAlias]);
         if (metric > 0) { args.Add("metric"); args.Add(metric.ToString()); }
-        RunIpVoid([.. args]);
+        return RunIp([.. args]);
     }
 
-    internal static void RemoveRoute(string dest, string interfaceAlias)
-        => RunIpVoid("route", "del", dest, "dev", interfaceAlias);
+    internal static (int ExitCode, string Stderr) RemoveRoute(string dest, string interfaceAlias)
+        => RunIp("route", "del", dest, "dev", interfaceAlias);
 
-    internal static void AddNeighbor(string ipAddress, string linkLayerAddress, string interfaceAlias)
-        => RunIpVoid("neigh", "add", ipAddress, "lladdr", linkLayerAddress, "dev", interfaceAlias, "nud", "permanent");
+    internal static (int ExitCode, string Stderr) AddNeighbor(string ipAddress, string linkLayerAddress, string interfaceAlias)
+        => RunIp("neigh", "add", ipAddress, "lladdr", linkLayerAddress, "dev", interfaceAlias, "nud", "permanent");
 
-    internal static void RemoveNeighbor(string ipAddress, string interfaceAlias)
-        => RunIpVoid("neigh", "del", ipAddress, "dev", interfaceAlias);
+    internal static (int ExitCode, string Stderr) RemoveNeighbor(string ipAddress, string interfaceAlias)
+        => RunIp("neigh", "del", ipAddress, "dev", interfaceAlias);
 
     // -----------------------------------------------------------------------
     // BCL HELPERS
@@ -435,11 +435,17 @@ internal static class IpHelpers
     // SUBPROCESS — write operations only (ip addr/route/neigh)
     // -----------------------------------------------------------------------
 
-    private static void RunIpVoid(params string[] args)
+    /// <summary>Checks if an ip subprocess failure is due to insufficient privileges.</summary>
+    internal static bool IsPermissionDenied(int exitCode, string stderr)
+    {
+        return stderr.Contains("Operation not permitted", StringComparison.OrdinalIgnoreCase)
+            || stderr.Contains("Permission denied", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static (int ExitCode, string Stderr) RunIp(params string[] args)
     {
         var (stdout, stderr, exit) = RunProcess("ip", args);
-        if (exit != 0)
-            throw new InvalidOperationException($"ip {string.Join(' ', args)} failed (exit {exit}): {stdout}{(stderr.Length > 0 ? " — " + stderr : "")}");
+        return (exit, stderr);
     }
 
     private static (string Stdout, string Stderr, int ExitCode) RunProcess(string exe, params string[] args)

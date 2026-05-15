@@ -17,8 +17,21 @@ public sealed class NewNetIPAddressCommand : PSCmdlet
     protected override void ProcessRecord()
     {
         if (!ShouldProcess($"{IPAddress}/{PrefixLength} on {InterfaceAlias}", "New-NetIPAddress")) return;
-        try { IpHelpers.AddIPAddress(IPAddress, PrefixLength, InterfaceAlias); }
-        catch (Exception ex) { WriteError(new ErrorRecord(ex, "AddIPAddressFailed", ErrorCategory.InvalidOperation, IPAddress)); return; }
+        var (exit, stderr) = IpHelpers.AddIPAddress(IPAddress, PrefixLength, InterfaceAlias);
+        if (exit != 0)
+        {
+            if (IpHelpers.IsPermissionDenied(exit, stderr))
+            {
+                WriteError(new ErrorRecord(
+                    new InvalidOperationException("New-NetIPAddress requires root privileges."),
+                    "ElevationRequired", ErrorCategory.PermissionDenied, IPAddress));
+                return;
+            }
+            WriteError(new ErrorRecord(
+                new InvalidOperationException($"ip addr add failed (exit {exit}): {stderr.Trim()}"),
+                "AddIPAddressFailed", ErrorCategory.InvalidOperation, IPAddress));
+            return;
+        }
         var result = IpHelpers.GetIPAddresses().FirstOrDefault(r =>
             r.IPAddress == IPAddress && r.InterfaceAlias == InterfaceAlias);
         if (result != null) WriteObject(result);
