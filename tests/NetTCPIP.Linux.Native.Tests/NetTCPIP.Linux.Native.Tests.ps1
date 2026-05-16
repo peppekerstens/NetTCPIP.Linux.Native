@@ -273,7 +273,7 @@ Describe 'Get-NetTCPConnection integration' -Skip:(-not $script:onLinux) {
         $listen | ForEach-Object { $_.RemotePort | Should -Be 0 }
     }
     It 'State values are valid strings' {
-        $valid = @('Closed', 'Listen', 'SynSent', 'SynReceived', 'Established', 'FinWait1', 'FinWait2', 'CloseWait', 'Closing', 'LastAck', 'TimeWait', 'DeleteTCB', 'Bound')
+        $valid = @('Closed', 'Listen', 'SynSent', 'SynReceived', 'Established', 'FinWait1', 'FinWait2', 'CloseWait', 'Closing', 'LastAck', 'TimeWait', 'DeleteTCB')
         Get-NetTCPConnection | ForEach-Object { $_.State | Should -BeIn $valid }
     }
 }

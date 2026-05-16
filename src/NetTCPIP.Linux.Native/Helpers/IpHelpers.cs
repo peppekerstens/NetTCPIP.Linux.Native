@@ -113,7 +113,7 @@ internal static class IpHelpers
                     InterfaceIndex    = idx,
                     AddressFamily     = "IPv4",
                     RouteMetric       = metric,
-                    TypeOfNextHop     = gwStr != null ? "Remote" : "Connected",
+                    TypeOfNextHop     = gwStr != null ? NextHopType.Indirect : NextHopType.Direct,
                 });
             }
         }
@@ -149,7 +149,7 @@ internal static class IpHelpers
                     InterfaceIndex    = idx,
                     AddressFamily     = "IPv6",
                     RouteMetric       = metric,
-                    TypeOfNextHop     = nhStr != null ? "Remote" : "Connected",
+                    TypeOfNextHop     = nhStr != null ? NextHopType.Indirect : NextHopType.Direct,
                 });
             }
         }
@@ -162,20 +162,20 @@ internal static class IpHelpers
     // GET TCP CONNECTIONS — /proc/net/tcp + /proc/net/tcp6
     // -----------------------------------------------------------------------
 
-    // /proc/net/tcp state codes → string names
-    private static readonly Dictionary<string, string> ProcStateMap = new()
+    // /proc/net/tcp state codes → TcpState enum
+    private static readonly Dictionary<string, TcpState> ProcStateMap = new()
     {
-        ["01"] = "Established",
-        ["02"] = "SynSent",
-        ["03"] = "SynReceived",
-        ["04"] = "FinWait1",
-        ["05"] = "FinWait2",
-        ["06"] = "TimeWait",
-        ["07"] = "Closed",
-        ["08"] = "CloseWait",
-        ["09"] = "LastAck",
-        ["0A"] = "Listen",
-        ["0B"] = "Closing",
+        ["01"] = TcpState.Established,
+        ["02"] = TcpState.SynSent,
+        ["03"] = TcpState.SynReceived,
+        ["04"] = TcpState.FinWait1,
+        ["05"] = TcpState.FinWait2,
+        ["06"] = TcpState.TimeWait,
+        ["07"] = TcpState.Closed,
+        ["08"] = TcpState.CloseWait,
+        ["09"] = TcpState.LastAck,
+        ["0A"] = TcpState.Listen,
+        ["0B"] = TcpState.Closing,
     };
 
     internal static List<NetTCPConnection> GetTcpConnections()
@@ -206,7 +206,7 @@ internal static class IpHelpers
                 if (!TryParseProcEndpoint(localRaw,  isIpv6, out var lAddr, out var lPort)) continue;
                 if (!TryParseProcEndpoint(remoteRaw, isIpv6, out var rAddr, out var rPort)) continue;
 
-                var state = ProcStateMap.GetValueOrDefault(stateHex, stateHex);
+                var state = ProcStateMap.GetValueOrDefault(stateHex, TcpState.Closed);
                 var pid   = LookupPidByInode(inode);
 
                 results.Add(new NetTCPConnection
@@ -217,7 +217,7 @@ internal static class IpHelpers
                     RemotePort    = rPort,
                     State         = state,
                     OwningProcess = pid,
-                    OffloadState  = "InHost",
+                    OffloadState  = OffloadState.Software,
                 });
             }
         }

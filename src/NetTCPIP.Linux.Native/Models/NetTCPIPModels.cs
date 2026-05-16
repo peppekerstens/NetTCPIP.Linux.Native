@@ -6,6 +6,52 @@
 
 namespace Microsoft.PowerShell.Commands;
 
+/// <summary>Address state for a network IP address.</summary>
+public enum AddressState
+{
+    Tentative = 0,
+    Deprecated = 1,
+    Invalid = 2,
+    Transitional = 3,
+    Preferred = 4,
+}
+
+/// <summary>Type of next hop for a network route.</summary>
+public enum NextHopType
+{
+    Other = 0,
+    Invalid = 1,
+    Direct = 2,
+    Indirect = 3,
+}
+
+/// <summary>TCP connection state matching System.Net.Mib.TcpState.</summary>
+public enum TcpState
+{
+    Closed = 1,
+    Listen = 2,
+    SynSent = 3,
+    SynReceived = 4,
+    Established = 5,
+    FinWait1 = 6,
+    FinWait2 = 7,
+    CloseWait = 8,
+    Closing = 9,
+    LastAck = 10,
+    TimeWait = 11,
+    DeleteTCB = 12,
+}
+
+/// <summary>Offload state for a TCP connection.</summary>
+public enum OffloadState
+{
+    Unknown = 0,
+    Software = 1,
+    Hardware = 2,
+    Capable = 3,
+    Disabled = 4,
+}
+
 public sealed class NetIPAddress
 {
     public string   IPAddress         { get; set; } = string.Empty;
@@ -16,7 +62,7 @@ public sealed class NetIPAddress
     public string   Type              { get; set; } = "Unicast";
     public string   PrefixOrigin      { get; set; } = "Manual";
     public string   SuffixOrigin      { get; set; } = "Manual";
-    public string   AddressState      { get; set; } = "Preferred";
+    public AddressState AddressState      { get; set; } = AddressState.Preferred;
     public TimeSpan ValidLifetime     { get; set; } = TimeSpan.MaxValue;
     public TimeSpan PreferredLifetime { get; set; } = TimeSpan.MaxValue;
     public bool     SkipAsSource      { get; set; }
@@ -32,7 +78,7 @@ public sealed class NetRoute
     public int    InterfaceIndex    { get; set; }
     public string AddressFamily     { get; set; } = "IPv4";
     public int    RouteMetric       { get; set; }
-    public string TypeOfNextHop     { get; set; } = "Connected";
+    public NextHopType TypeOfNextHop     { get; set; } = NextHopType.Direct;
     public string Protocol          { get; set; } = "NetMgmt";
     public string Publish           { get; set; } = "No";
     public string PolicyStore       { get; set; } = "ActiveStore";
@@ -45,10 +91,10 @@ public sealed class NetTCPConnection
     public ushort   LocalPort     { get; set; }
     public string   RemoteAddress { get; set; } = string.Empty;
     public ushort   RemotePort    { get; set; }
-    public string   State         { get; set; } = "Established";
+    public TcpState   State         { get; set; } = TcpState.Established;
     public uint     OwningProcess { get; set; }
     public DateTime? CreationTime { get; set; }
-    public string   OffloadState  { get; set; } = "InHost";
+    public OffloadState OffloadState  { get; set; } = OffloadState.Software;
     public override string ToString() => $"{LocalAddress}:{LocalPort} -> {RemoteAddress}:{RemotePort}";
 }
 

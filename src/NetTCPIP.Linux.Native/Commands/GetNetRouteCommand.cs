@@ -15,7 +15,7 @@ public sealed class GetNetRouteCommand : PSCmdlet
     [Parameter]                public int[]?    InterfaceIndex    { get; set; }
     [Parameter]                public string[]? NextHop           { get; set; }
     [Parameter][ValidateSet("IPv4","IPv6")] public string? AddressFamily   { get; set; }
-    [Parameter][ValidateSet("Connected","Unreachable","Remote")] public string? TypeOfNextHop { get; set; }
+    [Parameter][ValidateSet("Direct", "Indirect", "Invalid", "Other")] public NextHopType? TypeOfNextHop { get; set; }
 
     protected override void ProcessRecord()
     {
