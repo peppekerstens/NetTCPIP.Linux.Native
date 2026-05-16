@@ -24,13 +24,13 @@
 
 Windows NetTCPIP returns `CimInstance` objects — no .NET class hierarchy to inherit from. Linux POCOs already mirror CIM property names exactly.
 
-**Minor gaps (cosmetic):**
-- `NetIPAddress.AddressState` is `string` (Windows: enum via CIM)
-- `NetRoute.TypeOfNextHop` is `string` (Windows: enum via CIM)
-- `NetTCPConnection.State` is `string` (Windows: `MibTcpState` enum)
-- `NetTCPConnection.OffloadState` is `string` (Windows: enum via CIM)
-
-These are low-priority string-vs-enum mismatches. No inheritance change needed.
+**Fixed (2026-05-16, commit `9f0895a`):**
+- `NetIPAddress.AddressState` changed from `string` to `AddressState` enum
+- `NetRoute.TypeOfNextHop` changed from `string` to `NextHopType` enum
+- `NetTCPConnection.State` changed from `string` to `TcpState` enum
+- `NetTCPConnection.OffloadState` changed from `string` to `OffloadState` enum
+- Updated cmdlet parameters (`Get-NetRoute -TypeOfNextHop`, `Get-NetTCPConnection -State`) to use enum types
+- Updated Pester test valid State values list (removed `'Bound'`)
 
 ---
 
@@ -40,8 +40,7 @@ None.
 
 ## Next Steps
 
-1. (Optional) Convert string-typed states to proper enums
-2. No critical Rule 9 gaps — property alignment is sufficient
+No critical Rule 9 gaps — fully compliant.
 
 ---
 
