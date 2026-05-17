@@ -182,6 +182,7 @@ Invoke-Pester -Path tests/NetTCPIP.Linux.Native.Tests/ -Output Detailed
 | 0.1.0 | Initial release. 10 full cmdlets, 24 stubs. BCL + `/proc` read paths. `ip` write paths. |
 | 0.2.0 | Test expansion. Loopback alias add/remove round-trip; route round-trip; real `TcpListener` port filter for `Get-NetTCPConnection`; `Get-NetIPConfiguration -All` loopback check. |
 | 0.3.0 | GHA all-green. Fixed `$script:isLinux` collision → `$script:onLinux`; `fail-fast: false`; `Get-NetTCPConnection` null result → `Should -Not -Throw`; openSUSE image now includes `gawk`+`findutils`. All 5 distros pass. |
+| 1.0.0 | Rule 9 compliance: `AddressState`/`NextHopType`/`TcpState`/`OffloadState` string → enum. Elevation error translation. Windows pester tests. `STATUS.md` and `AGENTS.md` added. 22-rule audit passed. |
 
 ---
 
