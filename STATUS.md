@@ -36,7 +36,9 @@ Windows NetTCPIP returns `CimInstance` objects — no .NET class hierarchy to in
 
 ## Known Issues
 
-None.
+None identified locally.
+
+**Tracked on GitHub:** [Issues #1–#9](https://github.com/peppekerstens/NetTCPIP.Linux.Native/issues) (3 MUST, 6 SHOULD from code audit)
 
 ## Next Steps
 
